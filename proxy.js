@@ -26,7 +26,7 @@ module.exports = async (ctx, next) => {
 
   //get the current route paht
   let uri = "/" + ctx.params.model;
-  uri += method === "GET" && ctx.params.id ? "s/:id" : "s";
+  uri += ctx.params.id ? "s/:id" : "s";
   uri += path.indexOf("/count") >= 0 ? "/count" : "";
   let policies = [];
 
