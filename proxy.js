@@ -1,11 +1,11 @@
 "use strict";
 
 /**
- * This policy aims to be a a proxy between content-manager requests, 
- * and a trigger for all the policy (global and scoped) define in each 
+ * This policy aims to be a a proxy between content-manager requests,
+ * and at the same time trigger for all the policy (global and scoped) define in each
  * route.json for the api.
- * 
- * Add this policy as global and modify content manager routes 
+ *
+ * Add this policy as global and modify content manager routes
  * `../plugins/content-manager/config/routes.json` like this:
  * {
  *  {
@@ -16,7 +16,7 @@
  *        "policies": ["global.proxy","routing"]
  *    }
  *  },
- *  ... 
+ *  ...
  * }
  */
 module.exports = async (ctx, next) => {
@@ -45,23 +45,34 @@ module.exports = async (ctx, next) => {
   }
 
   // Solve the issue "next function is calle so many times".
-  let _resolved = null;
-  let promise = new Promise((resolve, reject) => {
-    _resolved = resolve;
-  });
-
+  let promises = [];
+  let waiths = [];
   //call all custom policy of the route.
-  policies.map(async policy => {
+  policies.map(policy => {
+    let p = new Promise((resolve, reject) => {
+      promises.push(resolve);
+    });
+
+    let _resolve;
+    waiths.push(
+      new Promise((resolve, reject) => {
+        _resolve = resolve;
+      })
+    );
+
     strapi.api[ctx.params.model].config.policies[policy.toLowerCase()](
       ctx,
-      async function() {
-        //return the dumy promise witch is resolve later.
-        return promise;
+      async () => {
+        _resolve();
+        return p;
       }
     );
   });
   // await for next is done
+  await Promise.all(waiths);
   await next();
   // resolve the dumy promise
-  _resolved();
+  promises.map(p => {
+    p();
+  });
 };
